@@ -12,20 +12,23 @@ def checkColor(rgb):
     r, g, b = rgb
 
     if((r - g) > 20 and (r - b) > 20):
-        return "red"
+        print("Found color")
+        return True, "red"
     elif((g - r) > 20 and (g - b) > 20):
-        return "green"
+        print("Found color")
+        return True, "green"
     elif((b - r) > 20 and (b - g) > 20):
-        return "blue"
+        print("Found color")
+        return True, "blue"
     else:
-        return False
+        return False, ""
     
 def saveToDrive(image_path, folderID):
     creds = None
     
     #Access and refresh tokens stored in token.json - check if this already exists first
     if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", scope='https://www.googleapis.com/auth/drive')
+        creds = Credentials.from_authorized_user_file("token.json", scopes='https://www.googleapis.com/auth/drive')
     if not creds or not creds.valid:
         #If user credentials are valid but expired refresh access token
         if creds and creds.expired and creds.refresh_token:
@@ -46,6 +49,9 @@ def saveToDrive(image_path, folderID):
 
         #splits the filepath - tail contains the filename and head rest of path
         head, tail = os.path.split(image_path)
+
+        #Test 
+        print(tail)
         
         file_metadata = {
             "name": tail,
@@ -70,24 +76,28 @@ def main(image_path):
                 }
 
     with Image.open(image_path) as im:
-        
-        pixels = im.load()
-
         width, height = im.size
-
         foundColor = False
 
-        while(foundColor):
-            for y in range(height):
-                for x in range(width):
-                    rgb_value = im.getpixel((x, y))
+        #Loop through each pixel in image
+        for y in range(height):
+            if foundColor:
+                break
 
-                    foundColor = checkColor(rgb_value)
+            for x in range(width):
+                #Pass the RGB value to checker function
+                rgb_value = im.getpixel((x, y))
+
+                foundColor, color = checkColor(rgb_value)
+
+                if foundColor:
+                    break
         
         if foundColor:
-            saveToDrive(image_path, colorCode[foundColor])
+            print("Color Found")
+            saveToDrive(image_path, colorCode[color])
         else:
-            print("The program could not identify a color!")
+            print("The program could not identify a color.")
 
 
 if __name__ == "__main__":
