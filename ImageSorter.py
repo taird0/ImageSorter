@@ -7,9 +7,13 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 
 def checkColor(rgb):
     r, g, b = rgb
+    
+    #If the difference between rgb values is greater than 20
+    #Returns the correct color
 
     if((r - g) > 20 and (r - b) > 20):
         print("Found color")
@@ -23,6 +27,15 @@ def checkColor(rgb):
     else:
         return False, ""
     
+def createToken():
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "credentials.json", scopes="https://www.googleapis.com/auth/drive"
+    )
+    creds = flow.run_local_server(port=0)
+    #Save credentials to json file
+    with open("token.json", "w") as token:
+        token.write(creds.to_json())
+
 def saveToDrive(image_path, folderID):
     creds = None
     
@@ -32,15 +45,16 @@ def saveToDrive(image_path, folderID):
     if not creds or not creds.valid:
         #If user credentials are valid but expired refresh access token
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", scopes="https://www.googleapis.com/auth/drive"
-            )
-            creds = flow.run_local_server(port=0)
-        #Save credentials to json file
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+            try:
+                creds.refresh(Request())
+            except RefreshError as error:
+                print("Could not refresh authorisation token - creating new one")
+                os.remove('token.json')
+                createToken()
+                saveToDrive(image_path, folderID)
+        else:  
+            createToken()
+            
 
     try:
         service = build("drive", "v3", credentials = creds)
@@ -69,6 +83,7 @@ def saveToDrive(image_path, folderID):
         
 def main(image_path):
 
+    #Dictionary containing GD folder ID's
     colorCode = {
         'red': '1qiCQw66znHkb45JGsBk3i7HF9YhkMoPj',
         'blue': '1Z3T7lj1dc6YhmUD0Uf0ZR_Ma_E8dNmv_',
@@ -81,17 +96,15 @@ def main(image_path):
 
         #Loop through each pixel in image
         for y in range(height):
-            if foundColor:
-                break
-
             for x in range(width):
                 #Pass the RGB value to checker function
                 rgb_value = im.getpixel((x, y))
-
                 foundColor, color = checkColor(rgb_value)
 
                 if foundColor:
                     break
+            if foundColor:
+                break
         
         if foundColor:
             print("Color Found")
@@ -103,6 +116,6 @@ def main(image_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Save a JPG Image into Google Drive - Color coded")
     parser.add_argument('input_image', help='Image to be sorted')
-
+    
     args = parser.parse_args()
     main(args.input_image)
