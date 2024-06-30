@@ -9,6 +9,49 @@ from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 
+#TODO Break logic up into more functions (Refresh token etc) / Add better error handling
+class GoogleDriveAuthenticator:
+    def __init__(self, client_secrets_file, token_file='token.json', scopes=['https://www.googleapis.com/auth/drive']):
+        self.client_secrets_file = client_secrets_file
+        self.token_file = token_file
+        self.scopes = scopes
+        self.creds = None
+
+    def load_credentials(self):
+        if(os.path.exists(self.token_file)):
+            creds = Credentials.from_authorized_user_file(self.token_file, self.scopes)
+
+    def refresh_credentials(self):
+        if self.creds and self.creds.expired and self.creds.refresh_token:
+            try:
+                self.creds.refresh(Request())
+                self.save_credentials
+                print('Credentials Refreshed successfully')
+            except RefreshError as error:
+                self.handle_refresh_error(error)
+                return False
+        return True
+    
+    def handle_refresh_error(self, error):
+        print('Attempting to recreate credentials')
+        self.create_token()
+
+    def save_credentials(self):
+        with open(self.token_file, 'w') as token:
+            token.write(self.creds.to_json()) 
+
+    def authenticate(self):
+        if not self.creds or not self.creds.valid:
+            self.load_credentials()
+            self.create_token()
+
+    def create_token(self):
+        flow = InstalledAppFlow.from_client_secrets_file(
+            self.token_file, self.scopes
+        )
+        creds = flow.run_local_server(port=0)
+
+
 def checkColor(rgb):
     r, g, b = rgb
     
@@ -35,6 +78,7 @@ def createToken():
     #Save credentials to json file
     with open("token.json", "w") as token:
         token.write(creds.to_json())
+
 
 def saveToDrive(image_path, folderID):
     creds = None
