@@ -4,6 +4,7 @@ import os.path
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+import GoogleDriveAuthenticator
 
 
 def checkColor(rgb):
