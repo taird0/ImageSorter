@@ -19,9 +19,12 @@ class GoogleDriveAuthenticator:
 
     def load_credentials(self):
         if(os.path.exists(self.token_file)):
-            creds = Credentials.from_authorized_user_file(self.token_file, self.scopes)
+            self.creds = Credentials.from_authorized_user_file(self.token_file, self.scopes)
+            return True
+        return False
 
     def refresh_credentials(self):
+        print('Refreshing credentials')
         if self.creds and self.creds.expired and self.creds.refresh_token:
             try:
                 self.creds.refresh(Request())
@@ -37,19 +40,23 @@ class GoogleDriveAuthenticator:
         self.create_token()
 
     def save_credentials(self):
+        print('Saving Creds')
         with open(self.token_file, 'w') as token:
             token.write(self.creds.to_json()) 
 
     def authenticate(self):
+        print('Authenticating')
         if not self.creds or not self.creds.valid:
-            self.load_credentials()
-            self.create_token()
+            if not self.load_credentials():
+                self.create_token()
 
     def create_token(self):
+        print('Creating token.')
         flow = InstalledAppFlow.from_client_secrets_file(
-            self.token_file, self.scopes
+            self.client_secrets_file, self.scopes
         )
-        creds = flow.run_local_server(port=0)
+        self.creds = flow.run_local_server(port=0)
+        self.save_credentials()
 
 
 def checkColor(rgb):
@@ -70,38 +77,20 @@ def checkColor(rgb):
     else:
         return False, ""
     
-def createToken():
-    flow = InstalledAppFlow.from_client_secrets_file(
-        "credentials.json", scopes="https://www.googleapis.com/auth/drive"
-    )
-    creds = flow.run_local_server(port=0)
-    #Save credentials to json file
-    with open("token.json", "w") as token:
-        token.write(creds.to_json())
 
 
 def saveToDrive(image_path, folderID):
-    creds = None
-    
-    #Access and refresh tokens stored in token.json - check if this already exists first
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", scopes='https://www.googleapis.com/auth/drive')
-    if not creds or not creds.valid:
-        #If user credentials are valid but expired refresh access token
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except RefreshError as error:
-                print("Could not refresh authorisation token - creating new one")
-                os.remove('token.json')
-                createToken()
-                saveToDrive(image_path, folderID)
-        else:  
-            createToken()
-            
+
+    auth = GoogleDriveAuthenticator(client_secrets_file="credentials.json")
 
     try:
-        service = build("drive", "v3", credentials = creds)
+        auth.authenticate()
+    except Exception as error:
+        print(f"An error occured during auth: {error}")
+        auth.refresh_credentials()
+
+    try:
+        service = build("drive", "v3", credentials = auth.creds)
 
         #Upload file to specified folder
 
@@ -163,3 +152,5 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     main(args.input_image)
+
+
