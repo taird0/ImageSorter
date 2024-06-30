@@ -1,62 +1,9 @@
 from PIL import Image
 import argparse
 import os.path
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials   
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
-from google.auth.exceptions import RefreshError
-
-#TODO Break logic up into more functions (Refresh token etc) / Add better error handling
-class GoogleDriveAuthenticator:
-    def __init__(self, client_secrets_file, token_file='token.json', scopes=['https://www.googleapis.com/auth/drive']):
-        self.client_secrets_file = client_secrets_file
-        self.token_file = token_file
-        self.scopes = scopes
-        self.creds = None
-
-    def load_credentials(self):
-        if(os.path.exists(self.token_file)):
-            self.creds = Credentials.from_authorized_user_file(self.token_file, self.scopes)
-            return True
-        return False
-
-    def refresh_credentials(self):
-        print('Refreshing credentials')
-        if self.creds and self.creds.expired and self.creds.refresh_token:
-            try:
-                self.creds.refresh(Request())
-                self.save_credentials
-                print('Credentials Refreshed successfully')
-            except RefreshError as error:
-                self.handle_refresh_error(error)
-                return False
-        return True
-    
-    def handle_refresh_error(self, error):
-        print('Attempting to recreate credentials')
-        self.create_token()
-
-    def save_credentials(self):
-        print('Saving Creds')
-        with open(self.token_file, 'w') as token:
-            token.write(self.creds.to_json()) 
-
-    def authenticate(self):
-        print('Authenticating')
-        if not self.creds or not self.creds.valid:
-            if not self.load_credentials():
-                self.create_token()
-
-    def create_token(self):
-        print('Creating token.')
-        flow = InstalledAppFlow.from_client_secrets_file(
-            self.client_secrets_file, self.scopes
-        )
-        self.creds = flow.run_local_server(port=0)
-        self.save_credentials()
 
 
 def checkColor(rgb):
@@ -91,8 +38,6 @@ def saveToDrive(image_path, folderID):
 
     try:
         service = build("drive", "v3", credentials = auth.creds)
-
-        #Upload file to specified folder
 
         #splits the filepath - tail contains the filename and head rest of path
         head, tail = os.path.split(image_path)
