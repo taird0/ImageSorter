@@ -1,6 +1,6 @@
 from PIL import Image
 import argparse
-import os.path
+import os
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
@@ -94,10 +94,11 @@ def main(image_path):
         process_image(image_path)
     else:
         for filename in os.listdir(image_path):
-            if filename.lower.endswith('.jpg'):
-                this_path = os.path.join(image_path, filename)
+            if filename.lower().endswith('.jpg'):
+                this_path = os.path.join(image_path, str(filename))
                 process_image(this_path)
                 print(f'{filename} saved to drive.')
+
 
 
 
