@@ -95,7 +95,7 @@ def main(image_path):
     else:
         for filename in os.listdir(image_path):
             if filename.lower().endswith('.jpg'):
-                this_path = os.path.join(image_path, str(filename))
+                this_path = os.path.join(image_path, filename)
                 process_image(this_path)
                 print(f'{filename} saved to drive.')
 
@@ -108,5 +108,3 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     main(args.input_image)
-
-
